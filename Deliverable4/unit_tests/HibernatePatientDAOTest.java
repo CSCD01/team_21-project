@@ -13,6 +13,8 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.hamcrest.Matchers.hasItems;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
@@ -40,10 +42,9 @@ public class HibernatePatientDAOTest extends BaseContextSensitiveTest {
 	@Test
 	public void getPatientIdentifiers_shouldGetByIdentifierType() {
 		List<PatientIdentifierType> identifierTypes = singletonList(new PatientIdentifierType(2));
-		List<PatientIdentifier> identifiers = hibernatePatientDao
-				.getPatientIdentifiers(null, identifierTypes, emptyList(), emptyList(), null);
-		List<Integer> identifierIds = identifiers.stream().map(PatientIdentifier::getId)
-				.collect(Collectors.toList());
+		List<PatientIdentifier> identifiers = hibernatePatientDao.getPatientIdentifiers(null, identifierTypes,
+				emptyList(), emptyList(), null);
+		List<Integer> identifierIds = identifiers.stream().map(PatientIdentifier::getId).collect(Collectors.toList());
 
 		Assert.assertEquals(2, identifiers.size());
 		Assert.assertThat(identifierIds, hasItems(1, 3));
@@ -51,75 +52,63 @@ public class HibernatePatientDAOTest extends BaseContextSensitiveTest {
 
 	@Test
 	public void getPatientIdentifiers_shouldGetByPatients() {
-		List<Patient> patients = Arrays.asList(
-				hibernatePatientDao.getPatient(6),
-				hibernatePatientDao.getPatient(7)
-		);
-		List<PatientIdentifier> identifiers = hibernatePatientDao
-				.getPatientIdentifiers(null, emptyList(), emptyList(), patients, null);
-		List<Integer> identifierIds = identifiers.stream().map(PatientIdentifier::getId)
-				.collect(Collectors.toList());
+		List<Patient> patients = Arrays.asList(hibernatePatientDao.getPatient(6), hibernatePatientDao.getPatient(7));
+		List<PatientIdentifier> identifiers = hibernatePatientDao.getPatientIdentifiers(null, emptyList(), emptyList(),
+				patients, null);
+		List<Integer> identifierIds = identifiers.stream().map(PatientIdentifier::getId).collect(Collectors.toList());
 
 		Assert.assertEquals(2, identifiers.size());
 		Assert.assertThat(identifierIds, hasItems(3, 4));
 	}
 
-	/**
-	 * Test the check_Table method in HibernatePatientDAO object
-	 * two PatientIdentifierType objects have same id, should return true
-	 */
 	@Test
-	public void testCheckTableSameId(){
-		deleteAllIdentifierTypes();
-		PatientIdentifierType identifierType = new PatientIdentifierType(1);
-		hibernatePatientDao.savePatientIdentifierType(identifierType);
-		assertTrue(hibernatePatientDao.check_Table(new PatientIdentifierType(1)));
+	public void checkExistedType() {
+		PatientIdentifierType patientIdentifierType = hibernatePatientDao.getPatientIdentifierType(1);
+		assertTrue(hibernatePatientDao.check_Table(patientIdentifierType));
 	}
 
-	/**
-	 * Test the check_Table method in HibernatePatientDAO object
-	 * two PatientIdentifierType objects have same format, should return true
-	 */
 	@Test
-	public void testCheckTableSameFormat(){
-		deleteAllIdentifierTypes();
-		PatientIdentifierType identifierType = new PatientIdentifierType(1);
-		identifierType.setFormat("Format1");
-		PatientIdentifierType identifierTypeSame = new PatientIdentifierType(2);
-		identifierTypeSame.setFormat("Format1");
-		hibernatePatientDao.savePatientIdentifierType(identifierType);
-		assertTrue(hibernatePatientDao.check_Table(identifierTypeSame));
+	public void checkAnotherExistedType() {
+		PatientIdentifierType patientIdentifierType = hibernatePatientDao.getPatientIdentifierType(2);
+		assertTrue(hibernatePatientDao.check_Table(patientIdentifierType));
 	}
 
-	/**
-	 * Test the check_Table method in HibernatePatientDAO object
-	 * two PatientIdentifierType objects have different id, should return false
-	 */
 	@Test
-	public void testCheckTableDifferent(){
-		deleteAllIdentifierTypes();
-		PatientIdentifierType identifierType = new PatientIdentifierType(1);
-		hibernatePatientDao.savePatientIdentifierType(identifierType);
-		assertFalse(hibernatePatientDao.check_Table(new PatientIdentifierType(2)));
+	public void checkNonExistentType() {
+		assertFalse(hibernatePatientDao.check_Table(new PatientIdentifierType(114514)));
 	}
 
-	/**
-	 * Test the check_Table method in HibernatePatientDAO object
-	 * if database is empty, then check_Table should return false
-	 */
 	@Test
-	public void testCheckTableVoid(){
-		deleteAllIdentifierTypes();
-		assertFalse(hibernatePatientDao.check_Table(new PatientIdentifierType(2)));
+	public void addAndCheckType() {
+		PatientIdentifierType patientIdentifierType = new PatientIdentifierType();
+		patientIdentifierType.setName("test");
+		patientIdentifierType.setDescription("description");
+		patientIdentifierType.setRequired(false);
+
+		assertNull(patientIdentifierType.getPatientIdentifierTypeId());
+
+		hibernatePatientDao.savePatientIdentifierType(patientIdentifierType);
+		assertNotNull(hibernatePatientDao.getPatientIdentifierType(patientIdentifierType.getPatientIdentifierTypeId()));
+
+		assertTrue(hibernatePatientDao.check_Table(patientIdentifierType));
 	}
 
-	/**
-	 * function that delete all IdentifierTypes objects from database
-	 */
-	public void deleteAllIdentifierTypes(){
-		List<PatientIdentifierType> identifierTypes = hibernatePatientDao.getAllPatientIdentifierTypes(true);
-		for(PatientIdentifierType identifierType: identifierTypes){
-			hibernatePatientDao.deletePatientIdentifierType(identifierType);
-		}
+	@Test
+	public void addAndCheckTypeOfSameFormat() {
+		PatientIdentifierType patientIdentifierTypeOne = new PatientIdentifierType();
+		patientIdentifierTypeOne.setName("name1");
+		patientIdentifierTypeOne.setDescription("description1");
+		patientIdentifierTypeOne.setRequired(false);
+		patientIdentifierTypeOne.setFormat("format");
+
+		PatientIdentifierType patientIdentifierTypeTwo = new PatientIdentifierType();
+		patientIdentifierTypeTwo.setName("name2");
+		patientIdentifierTypeTwo.setDescription("description2");
+		patientIdentifierTypeTwo.setRequired(false);
+		patientIdentifierTypeTwo.setFormat("format");
+
+		hibernatePatientDao.savePatientIdentifierType(patientIdentifierTypeOne);
+
+		assertTrue(hibernatePatientDao.check_Table(patientIdentifierTypeTwo));
 	}
 }
